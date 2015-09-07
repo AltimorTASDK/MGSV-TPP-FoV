@@ -55,7 +55,10 @@ public:
 
 	functions()
 	{
-		const auto module = LoadLibrary("C:\\Windows\\System32\\dxgi.dll");
+		char path[MAX_PATH];
+		GetWindowsDirectory(path, MAX_PATH);
+		strcat_s(path, "\\system32\\dxgi.dll");
+		const auto module = LoadLibrary(path);
 		CheckETWTLS = GetProcAddress(module, "CheckETWTLS");
 		CompatString = GetProcAddress(module, "CompatString");
 		CompatValue = GetProcAddress(module, "CompatValue");
