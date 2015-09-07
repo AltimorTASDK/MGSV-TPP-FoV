@@ -2,9 +2,6 @@
 
 static class functions {
 public:
-	FARPROC CheckETWTLS;
-	FARPROC CompatString;
-	FARPROC CompatValue;
 	FARPROC D3DKMTCloseAdapter;
 	FARPROC D3DKMTDestroyAllocation;
 	FARPROC D3DKMTDestroyContext;
@@ -15,13 +12,15 @@ public:
 	FARPROC D3DKMTSignalSynchronizationObject;
 	FARPROC D3DKMTUnlock;
 	FARPROC D3DKMTWaitForSynchronizationObject;
-	FARPROC DXGIDumpJournal;
-	FARPROC DXGIRevertToSxS;
+	FARPROC EnableFeatureLevelUpgrade;
 	FARPROC OpenAdapter10;
 	FARPROC OpenAdapter10_2;
-	FARPROC SetAppCompatStringPointer;
-	FARPROC CreateDXGIFactory1;
-	FARPROC CreateDXGIFactory;
+	FARPROC D3D11CoreCreateDevice;
+	FARPROC D3D11CoreCreateLayeredDevice;
+	FARPROC D3D11CoreGetLayeredDeviceSize;
+	FARPROC D3D11CoreRegisterLayers;
+	FARPROC D3D11CreateDevice;
+	FARPROC D3D11CreateDeviceAndSwapChain;
 	FARPROC D3DKMTCreateAllocation;
 	FARPROC D3DKMTCreateContext;
 	FARPROC D3DKMTCreateDevice;
@@ -46,22 +45,17 @@ public:
 	FARPROC D3DKMTSetGammaRamp;
 	FARPROC D3DKMTSetVidPnSourceOwner;
 	FARPROC D3DKMTWaitForVerticalBlankEvent;
-	FARPROC DXGID3D10CreateDevice;
-	FARPROC DXGID3D10CreateLayeredDevice;
-	FARPROC DXGID3D10ETWRundown;
-	FARPROC DXGID3D10GetLayeredDeviceSize;
-	FARPROC DXGID3D10RegisterLayers;
-	FARPROC DXGIReportAdapterConfiguration;
+	FARPROC D3DPerformance_BeginEvent;
+	FARPROC D3DPerformance_EndEvent;
+	FARPROC D3DPerformance_GetStatus;
+	FARPROC D3DPerformance_SetMarker;
 
 	functions()
 	{
 		char path[MAX_PATH];
 		GetWindowsDirectory(path, MAX_PATH);
-		strcat_s(path, "\\system32\\dxgi.dll");
+		strcat_s(path, "\\system32\\d3d11.dll");
 		const auto module = LoadLibrary(path);
-		CheckETWTLS = GetProcAddress(module, "CheckETWTLS");
-		CompatString = GetProcAddress(module, "CompatString");
-		CompatValue = GetProcAddress(module, "CompatValue");
 		D3DKMTCloseAdapter = GetProcAddress(module, "D3DKMTCloseAdapter");
 		D3DKMTDestroyAllocation = GetProcAddress(module, "D3DKMTDestroyAllocation");
 		D3DKMTDestroyContext = GetProcAddress(module, "D3DKMTDestroyContext");
@@ -72,13 +66,15 @@ public:
 		D3DKMTSignalSynchronizationObject = GetProcAddress(module, "D3DKMTSignalSynchronizationObject");
 		D3DKMTUnlock = GetProcAddress(module, "D3DKMTUnlock");
 		D3DKMTWaitForSynchronizationObject = GetProcAddress(module, "D3DKMTWaitForSynchronizationObject");
-		DXGIDumpJournal = GetProcAddress(module, "DXGIDumpJournal");
-		DXGIRevertToSxS = GetProcAddress(module, "DXGIRevertToSxS");
+		EnableFeatureLevelUpgrade = GetProcAddress(module, "EnableFeatureLevelUpgrade");
 		OpenAdapter10 = GetProcAddress(module, "OpenAdapter10");
 		OpenAdapter10_2 = GetProcAddress(module, "OpenAdapter10_2");
-		SetAppCompatStringPointer = GetProcAddress(module, "SetAppCompatStringPointer");
-		CreateDXGIFactory1 = GetProcAddress(module, "CreateDXGIFactory1");
-		CreateDXGIFactory = GetProcAddress(module, "CreateDXGIFactory");
+		D3D11CoreCreateDevice = GetProcAddress(module, "D3D11CoreCreateDevice");
+		D3D11CoreCreateLayeredDevice = GetProcAddress(module, "D3D11CoreCreateLayeredDevice");
+		D3D11CoreGetLayeredDeviceSize = GetProcAddress(module, "D3D11CoreGetLayeredDeviceSize");
+		D3D11CoreRegisterLayers = GetProcAddress(module, "D3D11CoreRegisterLayers");
+		D3D11CreateDevice = GetProcAddress(module, "D3D11CreateDevice");
+		D3D11CreateDeviceAndSwapChain = GetProcAddress(module, "D3D11CreateDeviceAndSwapChain");
 		D3DKMTCreateAllocation = GetProcAddress(module, "D3DKMTCreateAllocation");
 		D3DKMTCreateContext = GetProcAddress(module, "D3DKMTCreateContext");
 		D3DKMTCreateDevice = GetProcAddress(module, "D3DKMTCreateDevice");
@@ -103,17 +99,12 @@ public:
 		D3DKMTSetGammaRamp = GetProcAddress(module, "D3DKMTSetGammaRamp");
 		D3DKMTSetVidPnSourceOwner = GetProcAddress(module, "D3DKMTSetVidPnSourceOwner");
 		D3DKMTWaitForVerticalBlankEvent = GetProcAddress(module, "D3DKMTWaitForVerticalBlankEvent");
-		DXGID3D10CreateDevice = GetProcAddress(module, "DXGID3D10CreateDevice");
-		DXGID3D10CreateLayeredDevice = GetProcAddress(module, "DXGID3D10CreateLayeredDevice");
-		DXGID3D10ETWRundown = GetProcAddress(module, "DXGID3D10ETWRundown");
-		DXGID3D10GetLayeredDeviceSize = GetProcAddress(module, "DXGID3D10GetLayeredDeviceSize");
-		DXGID3D10RegisterLayers = GetProcAddress(module, "DXGID3D10RegisterLayers");
-		DXGIReportAdapterConfiguration = GetProcAddress(module, "DXGIReportAdapterConfiguration");
+		D3DPerformance_BeginEvent = GetProcAddress(module, "D3DPerformance_BeginEvent");
+		D3DPerformance_EndEvent = GetProcAddress(module, "D3DPerformance_EndEvent");
+		D3DPerformance_GetStatus = GetProcAddress(module, "D3DPerformance_GetStatus");
+		D3DPerformance_SetMarker = GetProcAddress(module, "D3DPerformance_SetMarker");
 	}
 } functions;
-void CheckETWTLS() { functions.CheckETWTLS(); }
-void CompatString() { functions.CompatString(); }
-void CompatValue() { functions.CompatValue(); }
 void D3DKMTCloseAdapter() { functions.D3DKMTCloseAdapter(); }
 void D3DKMTDestroyAllocation() { functions.D3DKMTDestroyAllocation(); }
 void D3DKMTDestroyContext() { functions.D3DKMTDestroyContext(); }
@@ -124,13 +115,15 @@ void D3DKMTSetDisplayPrivateDriverFormat() { functions.D3DKMTSetDisplayPrivateDr
 void D3DKMTSignalSynchronizationObject() { functions.D3DKMTSignalSynchronizationObject(); }
 void D3DKMTUnlock() { functions.D3DKMTUnlock(); }
 void D3DKMTWaitForSynchronizationObject() { functions.D3DKMTWaitForSynchronizationObject(); }
-void DXGIDumpJournal() { functions.DXGIDumpJournal(); }
-void DXGIRevertToSxS() { functions.DXGIRevertToSxS(); }
+void EnableFeatureLevelUpgrade() { functions.EnableFeatureLevelUpgrade(); }
 void OpenAdapter10() { functions.OpenAdapter10(); }
 void OpenAdapter10_2() { functions.OpenAdapter10_2(); }
-void SetAppCompatStringPointer() { functions.SetAppCompatStringPointer(); }
-void CreateDXGIFactory1() { functions.CreateDXGIFactory1(); }
-void CreateDXGIFactory() { functions.CreateDXGIFactory(); }
+void D3D11CoreCreateDevice() { functions.D3D11CoreCreateDevice(); }
+void D3D11CoreCreateLayeredDevice() { functions.D3D11CoreCreateLayeredDevice(); }
+void D3D11CoreGetLayeredDeviceSize() { functions.D3D11CoreGetLayeredDeviceSize(); }
+void D3D11CoreRegisterLayers() { functions.D3D11CoreRegisterLayers(); }
+void D3D11CreateDevice() { functions.D3D11CreateDevice(); }
+void D3D11CreateDeviceAndSwapChain() { functions.D3D11CreateDeviceAndSwapChain(); }
 void D3DKMTCreateAllocation() { functions.D3DKMTCreateAllocation(); }
 void D3DKMTCreateContext() { functions.D3DKMTCreateContext(); }
 void D3DKMTCreateDevice() { functions.D3DKMTCreateDevice(); }
@@ -155,9 +148,7 @@ void D3DKMTSetDisplayMode() { functions.D3DKMTSetDisplayMode(); }
 void D3DKMTSetGammaRamp() { functions.D3DKMTSetGammaRamp(); }
 void D3DKMTSetVidPnSourceOwner() { functions.D3DKMTSetVidPnSourceOwner(); }
 void D3DKMTWaitForVerticalBlankEvent() { functions.D3DKMTWaitForVerticalBlankEvent(); }
-void DXGID3D10CreateDevice() { functions.DXGID3D10CreateDevice(); }
-void DXGID3D10CreateLayeredDevice() { functions.DXGID3D10CreateLayeredDevice(); }
-void DXGID3D10ETWRundown() { functions.DXGID3D10ETWRundown(); }
-void DXGID3D10GetLayeredDeviceSize() { functions.DXGID3D10GetLayeredDeviceSize(); }
-void DXGID3D10RegisterLayers() { functions.DXGID3D10RegisterLayers(); }
-void DXGIReportAdapterConfiguration() { functions.DXGIReportAdapterConfiguration(); }
+void D3DPerformance_BeginEvent() { functions.D3DPerformance_BeginEvent(); }
+void D3DPerformance_EndEvent() { functions.D3DPerformance_EndEvent(); }
+void D3DPerformance_GetStatus() { functions.D3DPerformance_GetStatus(); }
+void D3DPerformance_SetMarker() { functions.D3DPerformance_SetMarker(); }
