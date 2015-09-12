@@ -14,6 +14,9 @@
 #include <Windows.h>
 #include <Psapi.h>
 
+// In hook_wrapper.asm
+extern "C" void hook_decrypt_wrap();
+
 /**
  * get_module_bounds - Get the boundaries of a module
  * @name:	Name of module
@@ -63,10 +66,10 @@ uintptr_t sigscan(const char *name, const char *sig, const char *mask)
 
 // FOV is in focal length of a 24mm x 36mm camera lens and is locked horizontally
 float new_tpp_fov, new_shoulder_fov, new_hiding_fov, new_cqc_fov;
-constexpr auto default_tpp_fov      = 21.F;
-constexpr auto default_shoulder_fov = 22.F;
-constexpr auto default_hiding_fov   = 26.F;
-constexpr auto default_cqc_fov      = 32.F;
+const auto default_tpp_fov      = 21.F;
+const auto default_shoulder_fov = 22.F;
+const auto default_hiding_fov   = 26.F;
+const auto default_cqc_fov      = 32.F;
 
 /**
  * hook_update_fov_lerp - Change the target FOV
@@ -93,7 +96,7 @@ void __fastcall hook_update_fov_lerp(const uintptr_t thisptr)
  * Scan for the signature of the function call, save the original address and
  * patch the offset to a call to our hook
  */
-void hook_decrypt()
+extern "C" void hook_decrypt()
 {
 	const auto update_fov_lerp_ref = (int32_t*)(sigscan(
 		"mgsvtpp.exe",
@@ -101,7 +104,7 @@ void hook_decrypt()
 		"xxxxxxxxxxxxxxxxxx") + 18);
 
 	// Store hook address in RAX because x64 has no 64 bit address CALL instruction
-	constexpr auto patch_size = 12;
+	const auto patch_size = 12;
 	const auto update_fov_lerp = (intptr_t)(update_fov_lerp_ref) + *update_fov_lerp_ref + 4;
 	const auto hook_call = update_fov_lerp - patch_size;
 
@@ -116,16 +119,6 @@ void hook_decrypt()
 	VirtualProtect((void*)(update_fov_lerp_ref), 4, PAGE_EXECUTE_READWRITE, &old_protect);
 	*update_fov_lerp_ref -= patch_size;
 	VirtualProtect((void*)(update_fov_lerp_ref), 4, old_protect, &old_protect);
-}
-
-__declspec(naked) void hook_decrypt_wrap()
-{
-	_asm call hook_decrypt
-
-	// Do the instructions at the end of the original function
-	_asm mov eax, 1
-	_asm add rsp, 0x48
-	_asm retn
 }
 
 /**
@@ -146,8 +139,8 @@ BOOL WINAPI DllMain(
 	float tpp_fov;
 	config >> tpp_fov;
 
-	constexpr auto deg2rad     = 3.1415926F / 180.F;
-	constexpr auto frame_width = 36.F;
+	const auto deg2rad     = 3.1415926F / 180.F;
+	const auto frame_width = 36.F;
 	const auto tpp_fov_tan     = tan(tpp_fov * deg2rad / 2.F);
 	new_tpp_fov      = frame_width / tpp_fov_tan / 2.F;
 	new_shoulder_fov = frame_width / (tpp_fov_tan * (default_tpp_fov / default_shoulder_fov)) / 2.F;
@@ -166,7 +159,7 @@ BOOL WINAPI DllMain(
 		"xxxxxxxxxxxx");
 
 	// Store hook address in RAX because x64 has no 64 bit address CALL instruction
-	constexpr auto patch_size = 12;
+	const auto patch_size = 12;
 	DWORD old_protect;
 	VirtualProtect((void*)(int3), patch_size, PAGE_EXECUTE_READWRITE, &old_protect);
 	*(uint16_t*)(int3) = 0xB848; // mov rax, hook_decrypt
