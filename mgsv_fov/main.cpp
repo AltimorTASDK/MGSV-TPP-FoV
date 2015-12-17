@@ -16,6 +16,7 @@
 
 // In hook_wrapper.asm
 extern "C" void hook_decrypt_wrap();
+extern "C" void hook_update_fov_lerp_wrap();
 
 /**
  * get_module_bounds - Get the boundaries of a module
@@ -77,9 +78,9 @@ const auto default_cqc_fov      = 32.F;
  *
  * Check the unmodified focal length and change to the appropriate new one
  */
-void __fastcall hook_update_fov_lerp(const uintptr_t thisptr)
+extern "C" void __fastcall hook_update_fov_lerp(const uintptr_t thisptr)
 {
-	auto *target_fov = (float*)(thisptr + 0x2EC);
+	auto *target_fov = (float*)(thisptr + 0x2FC);
 
 	*target_fov =
 		*target_fov == default_tpp_fov      ? new_tpp_fov :
@@ -100,8 +101,8 @@ extern "C" void hook_decrypt()
 {
 	const auto update_fov_lerp_ref = (int32_t*)(sigscan(
 		"mgsvtpp.exe",
-		"\x48\x8B\x8F\xF0\x0E\x00\x00\x48\x8B\x01\xFF\x50\x18\x48\x8D\x4F\xE0\xE8",
-		"xxxxxxxxxxxxxxxxxx") + 18);
+		"\x48\x8B\x8F\x00\x00\x00\x00\x48\x8B\x01\xFF\x50\x18\x48\x8D\x4F\xE0\xE8",
+		"xxx????xxxxxxxxxxx") + 18);
 
 	// Store hook address in RAX because x64 has no 64 bit address CALL instruction
 	const auto patch_size = 12;
@@ -111,7 +112,7 @@ extern "C" void hook_decrypt()
 	DWORD old_protect;
 	VirtualProtect((void*)(hook_call), patch_size, PAGE_EXECUTE_READWRITE, &old_protect);
 	*(uint16_t*)(hook_call) = 0xB848; // mov rax, hook_update_fov_lerp
-	*(void**)(hook_call + 2) = hook_update_fov_lerp;
+	*(void**)(hook_call + 2) = hook_update_fov_lerp_wrap;
 	*(uint16_t*)(hook_call + 10) = 0xD0FF; // call rax
 	VirtualProtect((void*)(hook_call), patch_size, old_protect, &old_protect);
 
