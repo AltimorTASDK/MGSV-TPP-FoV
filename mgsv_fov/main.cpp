@@ -18,6 +18,9 @@
 extern "C" void hook_decrypt_wrap();
 extern "C" void hook_update_fov_lerp_wrap();
 
+enum class gametype { mgsv, mgo };
+const auto game = GetModuleHandle("mgsvtpp.exe") == nullptr ? gametype::mgo : gametype::mgsv;
+
 /**
  * get_module_bounds - Get the boundaries of a module
  * @name:	Name of module
@@ -26,16 +29,17 @@ extern "C" void hook_update_fov_lerp_wrap();
  *
  * Get the module handle and use GetModuleInformation to get its bounds
  */
-void get_module_bounds(const char *name, uintptr_t *start, uintptr_t *end)
+bool get_module_bounds(const char *name, uintptr_t *start, uintptr_t *end)
 {
 	const auto module = GetModuleHandle(name);
 	if(module == nullptr)
-		return;
+		return false;
 
 	MODULEINFO info;
 	GetModuleInformation(GetCurrentProcess(), module, &info, sizeof(info));
 	*start = (uintptr_t)(info.lpBaseOfDll);
 	*end = *start + info.SizeOfImage;
+	return true;
 }
 
 /**
@@ -51,7 +55,8 @@ void get_module_bounds(const char *name, uintptr_t *start, uintptr_t *end)
 uintptr_t sigscan(const char *name, const char *sig, const char *mask)
 {
 	uintptr_t start, end;
-	get_module_bounds(name, &start, &end);
+	if (!get_module_bounds(name, &start, &end))
+		throw std::runtime_error("Module not loaded");
 
 	const auto last_scan = end - strlen(mask) + 1;
 	for (auto addr = start; addr < last_scan; addr++) {
@@ -80,7 +85,7 @@ const auto default_cqc_fov      = 32.F;
  */
 extern "C" void __fastcall hook_update_fov_lerp(const uintptr_t thisptr)
 {
-	auto *target_fov = (float*)(thisptr + 0x2FC);
+	auto *target_fov = (float*)(thisptr + (game == gametype::mgo ? 0x2EC : 0x2FC));
 
 	*target_fov =
 		*target_fov == default_tpp_fov      ? new_tpp_fov :
@@ -100,7 +105,7 @@ extern "C" void __fastcall hook_update_fov_lerp(const uintptr_t thisptr)
 extern "C" void hook_decrypt()
 {
 	const auto update_fov_lerp_ref = (int32_t*)(sigscan(
-		"mgsvtpp.exe",
+		game == gametype::mgo ? "mgsvmgo.exe" : "mgsvtpp.exe",
 		"\x48\x8B\x8F\x00\x00\x00\x00\x48\x8B\x01\xFF\x50\x18\x48\x8D\x4F\xE0\xE8",
 		"xxx????xxxxxxxxxxx") + 18);
 
@@ -142,20 +147,21 @@ BOOL WINAPI DllMain(
 
 	const auto deg2rad     = 3.1415926F / 180.F;
 	const auto frame_width = 36.F;
-	const auto tpp_fov_tan     = tan(tpp_fov * deg2rad / 2.F);
+	const auto tpp_fov_tan = tan(tpp_fov * deg2rad / 2.F);
 	new_tpp_fov      = frame_width / tpp_fov_tan / 2.F;
 	new_shoulder_fov = frame_width / (tpp_fov_tan * (default_tpp_fov / default_shoulder_fov)) / 2.F;
 	new_hiding_fov   = frame_width / (tpp_fov_tan * (default_tpp_fov / default_hiding_fov)) / 2.F;
 	new_cqc_fov      = frame_width / (tpp_fov_tan * (default_tpp_fov / default_cqc_fov)) / 2.F;
+
 	
 	const auto decrypt_code_end_jnb = (int32_t*)(sigscan(
-		"mgsvtpp.exe",
+		game == gametype::mgo ? "mgsvmgo.exe" : "mgsvtpp.exe",
 		"\xD1\xE2\x0F\xAF\xCA\x31\xC8\x8B\x4C\x24\x1C",
 		"xxxxxxxxxxx") - 0x279);
 
 	// Write hook code into int3 padding
 	const auto int3 = sigscan(
-		"mgsvtpp.exe",
+		game == gametype::mgo ? "mgsvmgo.exe" : "mgsvtpp.exe",
 		"\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC",
 		"xxxxxxxxxxxx");
 
