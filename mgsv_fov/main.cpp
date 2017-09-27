@@ -112,19 +112,29 @@ extern "C" void hook_decrypt()
 	// Store hook address in RAX because x64 has no 64 bit address CALL instruction
 	const auto patch_size = 12;
 	const auto update_fov_lerp = (intptr_t)(update_fov_lerp_ref) + *update_fov_lerp_ref + 4;
-	const auto hook_call = update_fov_lerp - patch_size;
+	// originally used preceding int3 space, but there's no room now, so we overwrite func start
+	const auto hook_call = update_fov_lerp; // - patch_size;
+
+	const auto return_jmp_loc = hook_call + patch_size;
+	// offsets explained in asm
+	const auto restored_instr = (intptr_t)hook_update_fov_lerp_wrap + 7;
+	const auto return_jmp_addr = restored_instr + patch_size + 2;
 
 	DWORD old_protect;
+	DWORD old_protect2;
 	VirtualProtect((void*)(hook_call), patch_size, PAGE_EXECUTE_READWRITE, &old_protect);
+	// also give access to the mov with + 10
+	VirtualProtect((void*)(restored_instr), patch_size+10, PAGE_EXECUTE_READWRITE, &old_protect2);
+	// backup instructions we overwrite
+	memcpy((void*)restored_instr, (void*)hook_call, patch_size);
+
 	*(uint16_t*)(hook_call) = 0xB848; // mov rax, hook_update_fov_lerp
 	*(void**)(hook_call + 2) = hook_update_fov_lerp_wrap;
-	*(uint16_t*)(hook_call + 10) = 0xD0FF; // call rax
-	VirtualProtect((void*)(hook_call), patch_size, old_protect, &old_protect);
+	*(uint16_t*)(hook_call + 10) = 0xE0FF; // jmp rax
 
-	// Move the CALL destination back to our hook call
-	VirtualProtect((void*)(update_fov_lerp_ref), 4, PAGE_EXECUTE_READWRITE, &old_protect);
-	*update_fov_lerp_ref -= patch_size;
-	VirtualProtect((void*)(update_fov_lerp_ref), 4, old_protect, &old_protect);
+	*(void**)(return_jmp_addr) = (void*)return_jmp_loc;
+	VirtualProtect((void*)(hook_call), patch_size, old_protect, &old_protect);
+	VirtualProtect((void*)(restored_instr), patch_size + 10, old_protect2, &old_protect2);
 }
 
 /**
