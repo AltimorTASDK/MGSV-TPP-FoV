@@ -48,11 +48,13 @@ bool get_module_bounds(const char *name, uintptr_t *start, uintptr_t *end)
  * @sig:	Byte sequence to scan for
  * @mask:	Wildcard mask, ?s will make the corresponding index in sig be
  *		ignored
+ * @must_succeed: If true, signscan failure will throw a runtime error.
+				  Else, return NULL for further processing
  *
  * Check if the pattern matches starting at each byte from start to end. Will
  * throw an exception if the signature isn't found.
  */
-uintptr_t sigscan(const char *name, const char *sig, const char *mask)
+uintptr_t sigscan(const char *name, const char *sig, const char *mask, bool must_succeed)
 {
 	uintptr_t start, end;
 	if (!get_module_bounds(name, &start, &end))
@@ -67,7 +69,10 @@ uintptr_t sigscan(const char *name, const char *sig, const char *mask)
 				break;
 		}
 	}
-	throw std::runtime_error("Sigscan failed");
+	if (must_succeed)
+		throw std::runtime_error("Sigscan failed");
+	else
+		return NULL;
 }
 
 // FOV is in focal length of a 24mm x 36mm camera lens and is locked horizontally
@@ -107,7 +112,7 @@ extern "C" void hook_decrypt()
 	const auto update_fov_lerp_ref = (int32_t*)(sigscan(
 		game == gametype::mgo ? "mgsvmgo.exe" : "mgsvtpp.exe",
 		"\x48\x8B\x8F\x00\x00\x00\x00\x48\x8B\x01\xFF\x50\x18\x48\x8D\x4F\xE0\xE8",
-		"xxx????xxxxxxxxxxx") + 18);
+		"xxx????xxxxxxxxxxx", true) + 18);
 
 	// Store hook address in RAX because x64 has no 64 bit address CALL instruction
 	const auto patch_size = 12;
@@ -163,17 +168,25 @@ BOOL WINAPI DllMain(
 	new_hiding_fov   = frame_width / (tpp_fov_tan * (default_tpp_fov / default_hiding_fov)) / 2.F;
 	new_cqc_fov      = frame_width / (tpp_fov_tan * (default_tpp_fov / default_cqc_fov)) / 2.F;
 
-	
-	const auto decrypt_code_end_jnb = (int32_t*)(sigscan(
+	const auto decrypt_code_end_sig = sigscan(
 		game == gametype::mgo ? "mgsvmgo.exe" : "mgsvtpp.exe",
 		"\xD1\xE2\x0F\xAF\xCA\x31\xC8\x8B\x4C\x24\x1C",
-		"xxxxxxxxxxx") - 0x279);
+		"xxxxxxxxxxx", false);
+
+	if (decrypt_code_end_sig == NULL) {
+		// the game doesn't have the encryption routines, just run the hook
+		// eg update 1.14
+		hook_decrypt();
+		return TRUE;
+	}
+	
+	const auto decrypt_code_end_jnb = (int32_t*)(decrypt_code_end_sig - 0x279);
 
 	// Write hook code into int3 padding
 	const auto int3 = sigscan(
 		game == gametype::mgo ? "mgsvmgo.exe" : "mgsvtpp.exe",
 		"\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC\xCC",
-		"xxxxxxxxxxxx");
+		"xxxxxxxxxxxx", true);
 
 	// Store hook address in RAX because x64 has no 64 bit address CALL instruction
 	const auto patch_size = 12;
